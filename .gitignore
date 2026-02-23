@@ -1,0 +1,5 @@
+build_temp
+cache
+*xml
+*zip
+__pycache__

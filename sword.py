@@ -1,0 +1,513 @@
+import re
+import os
+import shutil
+import subprocess
+import xml.etree.ElementTree as EleTree
+from xml.dom import minidom
+from pathlib import Path
+import importlib
+import sys
+import argparse
+
+from modules.helper_booknames import *
+
+arg_verbose = False
+
+##################################################################
+##################################################################
+# condense reference ranges
+
+def condense_reference_ranges(ref):
+
+    if not "-" in ref:
+        return ref
+
+    parts = ref.split("-")
+
+    parts0 = parts[0].split(" ")
+    parts1 = parts[1].split(" ")
+
+    book1 = " ".join(parts0[-1])
+    book2 = " ".join(parts1[-1])
+
+    if book1 != book2:
+        return ref
+
+    chapter1 = parts0[-1].split(":")[0]
+    chapter2 = parts1[-1].split(":")[0]
+    verse1 = parts0.split(":")[1]
+    verse2 = parts1.split(":")[1]
+
+    if chapter1 != chapter2:
+        return f"{book1} {chapter1}:{verse1}={chapter2}:{verse2}"
+
+    return f"{book1} {chapter1}:{verse1}-{verse2}"
+
+##################################################################
+##################################################################
+# replace placeholders for cross references with proper xml
+
+def make_xrefs(text):
+
+    # no cross references -> nothing to do
+    if "[[[" not in text:
+        return text
+
+    # split along start of cross references
+    parts = text.split("[[[")
+
+    # what came before is unchanged
+    ret = parts[0]
+
+    prevbook = ""
+    prevchapter = ""
+
+    # iterate through parts
+    for p in parts[1:]:
+
+        # split along end of cross reference section
+        pp = p.split("]]]")
+
+        # extract book name, chapter, and verse number from start of section
+        book = pp[0].split("|")[0]
+        shortbook = convert_bookname_to_osis(book)
+        chapter = pp[0].split("|")[1]
+        verse = pp[0].split("|")[2]
+
+        if book != prevbook or prevchapter != chapter:
+            # this converts to lower case 'a'
+            refletter = 97
+            prefix = -1
+            prevbook = book
+            prevchapter = chapter
+
+        # get a list of all references
+        allrefs = list(filter(str.strip, pp[0].split("|")[-1].split(",")))
+
+        # start of reference section
+        ret += f'<note type="crossReference" n="{chr(prefix) if prefix > 0 else ""}{chr(refletter)}" osisID="{shortbook}.{chapter}.{verse}!crossReference.{chr(prefix) if prefix > 0 else ""}{chr(refletter)}">'
+        # add an entry for all references
+        for i,r in enumerate(allrefs):
+            ret += f'{";" if i>0 else ""}<reference osisRef="{condense_reference_ranges(convert_bookname_to_osis(r)).replace(" ",".").replace(":",".")}">{condense_reference_ranges(r.strip())}</reference>'
+        # end of reference section
+        ret += "</note>"
+
+        # go to the next letter, unless we reached the 'z', then start over with 'a'
+        if refletter == 122:
+            if prefix == -1:
+                prefix = 97
+            else:
+                prefix += 1
+        refletter = (97 if refletter == 122 else refletter+1)
+
+        if prefix > 122:
+            print("ERROR: More cross references received than expected... this need to be fixed in the code!")
+            print("Resetting prefix to 97.")
+            prefix = 97
+
+        # the part that came after the end of the cross reference section is kept unchanged
+        ret += pp[1]
+
+    return ret
+
+
+##################################################################
+##################################################################
+# replace placeholders for footnotes with proper xml
+
+def make_footnotes(text):
+
+    # no footnotes -> nothing to do
+    if "|||" not in text:
+        return text
+
+    # split along footnotes delimiter (both start and end use same delimiter)
+    parts = text.split("|||")
+
+    # what comes before the first footnote is kept unchanged
+    ret = parts[0]
+
+    fn_id = 1
+
+    # loop through all parts in steps of two (as the start and end have the same delimiter)
+    for i in range(1,len(parts), 2):
+
+        # we keep italic and bold markers
+        toadd = parts[i]
+        toreplace = {"&lt;i&gt;" : "<i>",
+                     "&lt;/i&gt;" : "</i>",
+                     "&lt;b&gt;" : "<b>",
+                     "&lt;/b&gt;" : "</b>"}
+        for t in toreplace:
+            toadd = toadd.replace(t, toreplace[t])
+
+        # add footnote
+        ret += f'<note type="explanation" n="{fn_id}">{toadd}</note>'
+        # and add everything after the end of the footnote unchanged
+        ret += parts[i+1]
+
+        fn_id += 1
+
+    return ret
+
+
+##################################################################
+##################################################################
+# generate OSIS xml file
+
+def create_osis(data, name, path):
+
+    # namespace handle
+    name_space = "http://www.bibletechnologies.net/2003/OSIS/namespace"
+
+    # start XML element tree
+    EleTree.register_namespace('', name_space)
+
+    # create OSIS tags
+    osis = EleTree.Element(f"{{{name_space}}}osis")
+    text = EleTree.SubElement(osis, f"{{{name_space}}}osisText",
+                         {"osisIDWork": name, "osisRefWork": "Bible"})
+
+    # create header and work sub elements
+    header = EleTree.SubElement(text, f"{{{name_space}}}header")
+    work = EleTree.SubElement(header, f"{{{name_space}}}work", {"osisWork": name})
+
+    # store name as work text
+    EleTree.SubElement(work, f"{{{name_space}}}title").text = name
+
+    prevbook = ""
+
+    # loop over all data
+    for entry in data:
+
+        book = entry['book']
+        shortbook = convert_bookname_to_osis(book)
+        chapter = entry['chapter']
+
+        if book != prevbook:
+
+            # create new book sub element
+            bdiv = EleTree.SubElement(text, f"{{{name_space}}}div",
+                                {"type": "book", "osisID": shortbook})
+
+            prevbook = book
+
+        # create chapter sub element
+        cdiv = EleTree.SubElement(bdiv, f"{{{name_space}}}chapter",
+                                {"osisID": f"{shortbook}.{chapter}"})
+
+        just_opened_section_to_start = True
+        csec = EleTree.SubElement(cdiv, f"{{{name_space}}}div",
+                                    {"type": "section"})
+
+        for c in entry['content']:
+
+            # new section
+            if c[0] == "---":
+
+                # we open a section to start, this is to ensure we don't have an empty section at the beginning
+                if not just_opened_section_to_start:
+                    csec = EleTree.SubElement(cdiv, f"{{{name_space}}}div",
+                                    {"type": "section"})
+
+                continue
+
+            # now we're good
+            just_opened_section_to_start = False
+
+            # create title
+            if c[0].startswith("#"):
+                title = EleTree.SubElement(csec, f"{{{name_space}}}title",
+                                           {"type": "section"})
+                title.text = c[0].split("# ")[1].strip()
+                continue
+
+
+            # create verse sub element
+            verse = EleTree.SubElement(csec, f"{{{name_space}}}verse",
+                                    {"osisID": f"{shortbook}.{chapter}.{c[0]}"})
+            # store verse text
+            verse.text = c[1]
+
+    # create pretty xml from our string
+    xml = minidom.parseString(EleTree.tostring(osis, encoding="utf-8")).toprettyxml(indent="  ")
+
+    # format cross references and footnotes
+    # we do that AFTER prettying the XML above to keep its formatting unchanged
+    xml = make_xrefs(xml)
+    xml = make_footnotes(xml)
+
+    # store xml file
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(xml)
+
+
+##################################################################
+##################################################################
+# validate the xml to be sure
+
+def validate_xml(path):
+
+    from lxml import etree
+
+    # if the parsing fails, then it is invalid XML
+    try:
+        etree.parse(path)
+        if arg_verbose:
+            print("  XML structure valid.")
+    except etree.XMLSyntaxError as e:
+        print("  XML validation error:")
+        print(e)
+        raise
+
+
+##################################################################
+##################################################################
+# build module and install it in the right folder structure
+
+def build_and_install(name, longname, osis_path, description, author):
+
+    # we create the file structure in a temp directory
+    install_root = Path("./build_temp")
+
+    # the modules and mods.d directories
+    module_path = install_root / "modules" / "texts" / "ztext" / name.lower()
+    mods_d = install_root / "mods.d"
+
+    # Clean old builds
+    if module_path.exists():
+        shutil.rmtree(module_path)
+    if mods_d.exists():
+        shutil.rmtree(mods_d)
+
+    # create directories
+    module_path.mkdir(parents=True)
+    mods_d.mkdir(parents=True)
+
+    # Compile module with `osis2mod`
+    cmd = ["osis2mod", str(module_path), str(osis_path), "-z"]
+    if arg_verbose:
+        print("  Running:", " ".join(cmd))
+    subprocess.run(cmd, check=True, capture_output=True)
+
+    # Create conf
+    conf = f"""[{longname}]
+DataPath=./modules/texts/ztext/{name.lower()}/
+ModDrv=zText
+Encoding=UTF-8
+SourceType=OSIS
+CompressType=ZIP
+BlockType=BOOK
+Lang=en
+Version=1.0
+Description={description}
+About=Built with Python Sword Builder
+DistributionLicense=Public Domain
+TextSource={author}
+"""
+
+    # write configuration file
+    with open(mods_d / f"{name}.conf", "w") as f:
+        f.write(conf)
+
+
+##################################################################
+##################################################################
+# pack zip module file
+def create_zip_module(name, root_dir):
+
+    import zipfile
+
+    # handler for the zip file
+    zf = zipfile.ZipFile(f"{name}.zip", "w")
+
+    # we descend down into where the root of the zip file is supposed to be
+    # without that we will have additional root folders we don't want
+    # we store the cwd to go back to where we came from at the end
+    curcwd = os.getcwd()
+    os.chdir(root_dir)
+
+    # add the .conf file from the modules subdir
+    for dirname, subdirs, files in os.walk("modules"):
+        zf.write(dirname)
+        for filename in files:
+            zf.write(os.path.join(dirname, filename))
+    # add the compiled text files from the mods.d subdir
+    for dirname, subdirs, files in os.walk("mods.d"):
+        zf.write(dirname)
+        for filename in files:
+            zf.write(os.path.join(dirname, filename))
+
+    # done
+    zf.close()
+    # and go back to where we started
+    os.chdir(curcwd)
+
+##################################################################
+##################################################################
+# MAIN ENTRY FUNCTION to be called to start the full process
+
+def generate_module(name, content,
+                    longname,
+                    description="Custom Module",
+                    author="Auto Generated"):
+
+    # parse the input text
+    # data = parse_text(content)
+
+    # create temporary build directory
+    build_dir = Path("./build_temp")
+    if build_dir.exists():
+        shutil.rmtree(build_dir)
+    build_dir.mkdir(exist_ok=True)
+
+    # here we build the XML file
+    osis_path = build_dir / f"{name}.osis.xml"
+
+    if arg_verbose:
+        print(" Creating OSIS...")
+    create_osis(content, name, osis_path)
+
+    if arg_verbose:
+        print(" Validating XML...")
+    validate_xml(str(osis_path))
+
+    if arg_verbose:
+        print(" Building + Installing to temporary directory...")
+    build_and_install(name, longname, osis_path, description, author)
+
+    if arg_verbose:
+        print(" Creating ZIP module file...")
+    create_zip_module(name, build_dir)
+
+    if arg_verbose:
+        print(" Cleaning up temporary files...")
+    # shutil.rmtree(build_dir)
+
+
+
+if __name__ == "__main__":
+
+    backends = ["biblegateway.org"]
+
+    parser = argparse.ArgumentParser(
+                    prog='SID',
+                    description='SWORD bible module generator')
+
+    parser.add_argument('--verbose', action='store_true', help="Enable verbose messages about what is happening.")
+    parser.add_argument('--backend', default="", help=f"Automatically choose the specified backend.\nPossible values are: {", ".join(backends)}")
+    parser.add_argument('--bible-version', default="", help="Automatically choose the specified bible version.")
+    parser.add_argument('--confirm-rights', default=False, action='store_true', help="Don't ask whether I have the required permissions.")
+    parser.add_argument('--ignore-cache', default=False, help="Don't use any cached files, re-download everything fresh.")
+
+    args = parser.parse_args()
+
+    arg_backend = args.backend
+    arg_version = args.bible_version
+    arg_confirmrights = args.confirm_rights
+    arg_ignorecache = args.ignore_cache
+    arg_verbose = args.verbose
+
+    if arg_backend == "":
+        print("First choose which backend to use:")
+        print("")
+        for b in range(len(backends)):
+            print(f"   ({b+1}) {backends[b]}")
+        print("")
+        print(" Enter choice (default: 1): ", end="")
+        arg_backend = input()
+        print("")
+
+        if arg_backend == "":
+            arg_backend = "1"
+        if arg_backend.isdigit():
+            arg_backend = int(arg_backend)-1
+        else:
+            arg_backend = -1
+
+        if arg_backend < 0 or arg_backend >= len(backends):
+            print(f" [Error] Invalid backend selected: {arg_backend}")
+            print("")
+            exit()
+
+        arg_backend = backends[arg_backend]
+
+    else:
+
+        if arg_backend not in backends:
+            print(f" The requested backend ({arg_backend}) is not available.")
+            print(f" Possible backends are: {", ".join(backends)}")
+            exit()
+
+        print(f" Using provided backend: {arg_backend}")
+
+
+    if arg_version == "":
+        print("")
+        print("What version do you want to create?")
+        print("")
+        print(" Enter choice (default: NIV): ", end="")
+        arg_version = input()
+        print("")
+
+        if arg_version == "":
+            arg_version = "NIV"
+
+    else:
+        print(f" Using provided version: {arg_version}")
+
+    if not arg_confirmrights:
+        print("")
+        print("Depending on where you live, you might not have the automatic right to a digital version\n"
+            "of a physical book. By continuing you confirm that you either have the right to or have\n"
+            "obtained permission to make a digital copy of this bible version.")
+        print("")
+        cont = ""
+        while cont != "y" and cont != "n":
+            print(" Continue? [y/n] ", end="")
+            cont = input().lower()
+            if cont == "yes":
+                cont = "y"
+            elif cont == "no":
+                cont = "n"
+            if cont != "y" and cont != "n":
+                print("  Please enter either y or n.")
+
+        if cont == "n":
+            print("")
+            print("  Stopping here.")
+            print("")
+            exit()
+
+    else:
+        print(" Automatically confirmed that you have the necessary rights.")
+
+    print("")
+    print("")
+    print(" Working with this configuration:")
+    print("")
+    print(f"  Backend: {arg_backend}")
+    print(f"  Version: {arg_version}")
+    print(f"  Rights confirmed: yes")
+    print(f"  Caching: {"no" if arg_ignorecache else "yes"}")
+    print("")
+    print("")
+
+    print(" Launching download. This will take a few minutes...")
+    print("")
+
+    mod = __import__(f'modules.backend_{arg_backend.replace(".","")}', fromlist=[''])
+
+    data = mod.getText(arg_version, verbose=arg_verbose, cache=(not arg_ignorecache))
+
+    print("")
+    print(" Download completed! Generating module...")
+    print("")
+
+    generate_module(name=f"{arg_version}{arg_backend.replace(".","")}",
+                    content=data,
+                    longname=arg_version,
+                    description=f"{arg_version} from {arg_backend}",
+                    author="SID")
+
+    print(" Done!")
