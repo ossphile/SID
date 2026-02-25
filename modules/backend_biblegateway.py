@@ -82,9 +82,12 @@ def retrieveData(reference, version, verbose, cache):
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = cache_dir / f"{reference}.html"
 
+    htmltxt = ""
+
     if cache and cache_file.exists():
         with open(cache_file, "r") as f:
-            soup = BeautifulSoup(f.read(), 'html.parser')
+            htmltxt = f.read()
+        soup = BeautifulSoup(htmltxt, 'html.parser')
 
     else:
 
@@ -93,16 +96,17 @@ def retrieveData(reference, version, verbose, cache):
         # Use the printer-friendly view since there are fewer page elements to load and process
         source_site_params = urlencode({'version': version, 'search': reference, 'interface': 'print'})
         source_site = f'https://www.biblegateway.com/passage/?{source_site_params}'
-        txt = get_page(source_site)
+        htmltxt = get_page(source_site).decode()
         if cache:
             with open(cache_file, "w") as f:
-                f.write(txt.decode())
-        soup = BeautifulSoup(txt, 'html.parser')
+                f.write(htmltxt)
+        soup = BeautifulSoup(htmltxt, 'html.parser')
 
     # Don't collect contents from an invalid verse, since they do not exist.
     # A fail-fast approach can be taken by checking for certain indicators of invalidity.
     if not soup.find('div', {'class': 'passage-content'}):
-        print("ERROR: did not find passage content")
+        if "No valid results were found for your search." not in htmltxt:
+            print("ERROR: did not find passage content")
         return []
 
     # To get a list, the passage separator is given an actual practical use as an indicator of where to split
