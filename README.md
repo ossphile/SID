@@ -6,12 +6,6 @@ It is sufficient to execute the main python file `sword.py` with Python, it will
 
 ---
 
-**NOTE**
-
-These Python scripts are still in a very early stage. Feel free to test them already, the basic usage already works just fine, but they likely change a bit in the days and weeks to come.
-
----
-
 ### How does it work?
 
 SID relies on different backends that can be selected at runtime. Each backend is responsible for extracting all the required data and return them to SID in a unified fashion. SID, in turn, takes the returned data, generates the proper XML file and converts it (using `osis2mod`) to the compiled module.
