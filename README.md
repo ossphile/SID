@@ -51,15 +51,19 @@ The content stored in the dictionary is another `list` that contains the verses 
 
 SID also supports cross-references and footnotes to be contained in verses:
 
-- Adding a footnote can be done in this way: `This is some|||sometimes also <i>some random</i>||| text.` The data between the triple `|` is converted into a footnote at this position
-- Adding a cros references is done in a similar way: `This is also|[|Gen|1|Genesis 1:5|]| some text.`. Between the triple `|[|` and `|]|`, three pieces of information are expected, each separated by a vertical line `|`: 
+- Adding a footnote can be done in this way: `This is some|||Genesis|1|sometimes also <i>some random</i>||| text.` Between the triple `|||` on both ends, three pieces of information are expected, each separated by a vertical line `|` which will be converted into a footnote at this position:
+    1. The current book.
+    2. The current chapter.
+    3. The footnote which can include basic HTML tags (like `<i>` or `<b>`).
+
+- Adding a cros references is done in a similar way: `This is also|[|Genesis|1|Genesis 1:5|]| some text.`. Between the triple `|[|` and `|]|`, four pieces of information are expected, each separated by a vertical line `|`: 
     1. The current book.
     2. The current chapter.
     3. The current verse.
     4. The cross references. This can be a comma separated list.
 - If a verse contains line breaks, then it is assumed to be poetry and will be formatted accordingly. Four leading spaces for one such line will cause the line to be indented by a level in the final module.
 
-The code for this extraction needs to be wrapped in a function called `getData` that expects three parameters: `version`, (which bible version was requested), `verbose` (whether the user wants verbose feedback of what is going on), and `cache` (whether the backend is expected to dome some caching of downloaded files). 
+All the code for this extraction needs to be wrapped in a function called `getData` that expects three parameters: `version`, (which bible version was requested), `verbose` (whether the user wants verbose feedback of what is going on), and `cache` (whether the backend is expected to dome some caching of downloaded files). 
 
 In addition to the `getData` function for extracting the bible text in the format described above, one additional function that is necessary is the function called `getSupportedVersions`. This function returns a dictionary as described by this sample data:
 ```
