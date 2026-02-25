@@ -18,6 +18,10 @@ SID relies on different backends that can be selected at runtime. Each backend i
 
 At the end of its run, you will find a ZIP file in the root folder that can be used to install the module wherever you want it to.
 
+### How do I install a module?
+
+These scripts produce a ZIP file that often can be installed by some piece of software. If not, you can extract the zip file and place the `mods.d` and `modules` subdirectory, for example, into the `~/.sword/` location for it to be picked up by your bible software.
+
 ### What about rights?
 
 Depending on where in the world you live you might not have automatic permission to have a digital copy of any physical book you have. You need to confirm that you indeed have the necessary rights. SID does not assume any responsibility in this regard. SID does not provide any bible text data itself, but merely functions as middle man between you and an external server. It is on you, the user, to ensure that all rights are respected.
