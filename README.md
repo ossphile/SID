@@ -1,4 +1,4 @@
-# SID - *S*WORD b*i*ble mo*d*ule generator
+# SID - **S**WORD b**i**ble mo**d**ule generator
 
 SID is a helper program that is capable of getting the bible from various different backends, generating a SWORD bible module at the end. Such a module can then be used with any software (desktop, mobile) that supports such modules.
 
