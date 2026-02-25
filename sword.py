@@ -457,7 +457,7 @@ def generate_module(name, content,
 
     if arg_verbose:
         print(" Cleaning up temporary files...")
-    # shutil.rmtree(build_dir)
+    shutil.rmtree(build_dir)
 
 
 
@@ -579,7 +579,7 @@ if __name__ == "__main__":
     print(" Download completed! Generating module...")
     print("")
 
-    generate_module(name=f"{arg_version}{arg_backend.replace(".","")}",
+    generate_module(name=f"{arg_version}_{arg_backend.replace(".","")}",
                     content=data,
                     longname=arg_version,
                     language=mod.getLanguage(arg_version),
