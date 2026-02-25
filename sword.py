@@ -16,6 +16,12 @@ arg_verbose = False
 
 ##################################################################
 ##################################################################
+# available backends
+
+backends = ["biblegateway"]
+
+##################################################################
+##################################################################
 # condense reference ranges
 
 def condense_reference_ranges(ref):
@@ -463,8 +469,6 @@ def generate_module(name, content,
 
 if __name__ == "__main__":
 
-    backends = ["biblegateway"]
-
     parser = argparse.ArgumentParser(
                     prog='SID',
                     description='SWORD bible module generator')
@@ -480,7 +484,7 @@ if __name__ == "__main__":
     arg_backend = args.backend
     arg_version = args.bible_version
     arg_confirmrights = args.confirm_rights
-    arg_ignorecache = args.ignore_cache
+    arg_cache = (not args.ignore_cache)
     arg_verbose = args.verbose
 
     if arg_backend == "":
@@ -564,7 +568,7 @@ if __name__ == "__main__":
     print(f"  Backend: {arg_backend}")
     print(f"  Version: {arg_version}")
     print(f"  Rights confirmed: yes")
-    print(f"  Caching: {"no" if arg_ignorecache else "yes"}")
+    print(f"  Caching: {"yes" if arg_cache else "no"}")
     print("")
     print("")
 
@@ -573,7 +577,7 @@ if __name__ == "__main__":
 
     mod = __import__(f'modules.backend_{arg_backend.replace(".","")}', fromlist=[''])
 
-    data = mod.getData(arg_version, arg_verbose)
+    data = mod.getData(arg_version, arg_verbose, arg_cache)
 
     print("")
     print(" Download completed! Generating module...")

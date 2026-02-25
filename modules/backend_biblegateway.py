@@ -19,7 +19,7 @@ def getLanguage(version):
 def isSupportedVersion(version):
     return (version.toupper() in getSupportedVersions())
 
-def getData(version, verbose):
+def getData(version, verbose, cache):
 
     return_data = []
 
@@ -34,13 +34,13 @@ def getData(version, verbose):
 
             return_data.append({"book" : book,
                                 "chapter" : chapter,
-                                "content" : retrieveData(f"{book} {chapter}", version, verbose)})
+                                "content" : retrieveData(f"{book} {chapter}", version, verbose, cache)})
 
     return return_data
 
 # This function is adapted from the meaningless package, version 1.3.0:
 # https://github.com/daniel-tran/meaningless
-def retrieveData(reference, version, verbose):
+def retrieveData(reference, version, verbose, cache):
     """
     Retrieves a specific passage directly from the Bible Gateway site.
     """
@@ -56,7 +56,7 @@ def retrieveData(reference, version, verbose):
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = cache_dir / f"{reference}.html"
 
-    if cache_file.exists():
+    if cache and cache_file.exists():
         with open(cache_file, "r") as f:
             soup = BeautifulSoup(f.read(), 'html.parser')
 
@@ -68,8 +68,9 @@ def retrieveData(reference, version, verbose):
         source_site_params = urlencode({'version': version, 'search': reference, 'interface': 'print'})
         source_site = f'https://www.biblegateway.com/passage/?{source_site_params}'
         txt = get_page(source_site)
-        with open(cache_file, "w") as f:
-            f.write(txt.decode())
+        if cache:
+            with open(cache_file, "w") as f:
+                f.write(txt.decode())
         soup = BeautifulSoup(txt, 'html.parser')
 
     # Don't collect contents from an invalid verse, since they do not exist.
