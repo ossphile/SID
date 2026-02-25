@@ -59,9 +59,15 @@ SID also supports cross-references and footnotes to be contained in verses:
     4. The cross references. This can be a comma separated list.
 - If a verse contains line breaks, then it is assumed to be poetry and will be formatted accordingly. Four leading spaces for one such line will cause the line to be indented by a level in the final module.
 
+The code for this extraction needs to be wrapped in a function called `getData` that expects three parameters: `version`, (which bible version was requested), `verbose` (whether the user wants verbose feedback of what is going on), and `cache` (whether the backend is expected to dome some caching of downloaded files). 
 
-This is all that is needed for a backend to work with SID. The code for the backend needs to be wrapped in a function called `getData` that expected three parameters: `version`, (which bible version was requested), `verbose` (whether the user wants verbose feedback of what is going on), and `cache` (whether the backend is expected to dome some caching of downloaded files). This function, then, needs to be stored in a file with filename `backend_[identifier].py`, where identifier is any string of letters that will allow the user to select this backend. In addition to the `getData` function, a small `getLanguage` function also needs to be provided that takes as its only parameter the bible version and return the language identifier (en, fr, de, ...) of the provided bible version.
+In addition to the `getData` function for extracting the bible text in the format described above, one additional function that is necessary is the function called `getSupportedVersions`. This function returns a dictionary as described by this sample data:
+```
+data = {'NIV'     : ['New International Version', 'en'],
+        'SCH2000' : ['Schlachter 2000'          , 'de']}
+```
+The keys are the bible version identifiers that the user will use to select the desired version, and the values are lists containing exactly two elements: The first entry is the proper name of that bible version, and the second entry is the two-character identifier of the language.
 
-The backend needs to be added to SID now by adding its identifier to the `backends` list at the top of the `sword.py` file. Note that the entry in the list *can* include dots, but these will be removed before importing the backend module.
+Both of these functions, and any other code needed by a backend, need to be stored in a file with filename `backend_[identifier].py`, where identifier is any string of letters that will allow the user to select this backend (for example: `backend_biblegateway.py`). In addition that idenfitier (*without* the `backend_` prefix *nor* the `.py` suffix), needs to be added to the `backends` list near the top of the `sword.py` file.
 
 And now you are ready to test your new backend with SID.

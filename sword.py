@@ -465,7 +465,8 @@ def generate_module(name, content,
         print(" Cleaning up temporary files...")
     shutil.rmtree(build_dir)
 
-
+########################################################################
+########################################################################
 
 if __name__ == "__main__":
 
@@ -478,14 +479,18 @@ if __name__ == "__main__":
     parser.add_argument('--bible-version', default="", help="Automatically choose the specified bible version.")
     parser.add_argument('--confirm-rights', default=False, action='store_true', help="Don't ask whether I have the required permissions.")
     parser.add_argument('--ignore-cache', default=False, action='store_true', help="Don't use any cached files, re-download everything fresh.")
+    parser.add_argument('--supported-versions', default=False, action='store_true', help="List all bible versions that are supported for the given backend.")
 
     args = parser.parse_args()
 
     arg_backend = args.backend
+    arg_listsupported = args.supported_versions
     arg_version = args.bible_version
     arg_confirmrights = args.confirm_rights
     arg_cache = (not args.ignore_cache)
     arg_verbose = args.verbose
+
+    ########################################################################
 
     if arg_backend == "":
         print("First choose which backend to use:")
@@ -518,8 +523,24 @@ if __name__ == "__main__":
             print(f" Possible backends are: {", ".join(backends)}")
             exit()
 
-        print(f" Using provided backend: {arg_backend}")
+        if arg_verbose:
+            print(f" Using provided backend: {arg_backend}")
 
+    mod = __import__(f'modules.backend_{arg_backend.replace(".","")}', fromlist=[''])
+
+    ########################################################################
+
+    if arg_listsupported:
+
+        print("")
+        print(f" The supported bible versions of the backend '{arg_backend}' are:")
+        print("")
+        [print(f"{ver:>12} | {mod.getSupportedVersions()[ver][0]} ({mod.getSupportedVersions()[ver][1]})") for ver in mod.getSupportedVersions()]
+        print("")
+
+        exit()
+
+    ########################################################################
 
     if arg_version == "":
         print("")
@@ -533,7 +554,16 @@ if __name__ == "__main__":
             arg_version = "NIV"
 
     else:
-        print(f" Using provided version: {arg_version}")
+
+        if arg_version not in mod.getSupportedVersions():
+            print(f" The requested version ({arg_version}) is not supported by the selected backends.")
+            print(f" Possible versions are: {", ".join(list(mod.getSupportedVersions().keys()))}")
+            exit()
+
+        if arg_verbose:
+            print(f" Using provided version: {arg_version}")
+
+    ########################################################################
 
     if not arg_confirmrights:
         print("")
@@ -558,8 +588,10 @@ if __name__ == "__main__":
             print("")
             exit()
 
-    else:
+    elif arg_verbose:
         print(" Automatically confirmed that you have the necessary rights.")
+
+    ########################################################################
 
     print("")
     print("")
@@ -572,12 +604,14 @@ if __name__ == "__main__":
     print("")
     print("")
 
+    ########################################################################
+
     print(" Launching download. This will take a few minutes...")
     print("")
 
-    mod = __import__(f'modules.backend_{arg_backend.replace(".","")}', fromlist=[''])
-
     data = mod.getData(arg_version, arg_verbose, arg_cache)
+
+    ########################################################################
 
     print("")
     print(" Download completed! Generating module...")
@@ -586,8 +620,10 @@ if __name__ == "__main__":
     generate_module(name=f"{arg_version}_{arg_backend.replace(".","")}",
                     content=data,
                     longname=arg_version,
-                    language=mod.getLanguage(arg_version),
+                    language=mod.getSupportedVersions()[arg_version][1],
                     description=f"{arg_version} ({arg_backend})",
                     author="SID")
+
+    ########################################################################
 
     print(" Done!")

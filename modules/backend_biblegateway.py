@@ -5,19 +5,43 @@ from .helper_booknames import *
 from .helper_general import *
 
 def getSupportedVersions():
-    return ["AMP", "ASV", "AKJV", "BRG", "CSB", "EHV", "ESV", "ESVUK", "GNV", "GW", "ISV", "JUB", "KJV", "KJ21", "LEB", "LSB", "MEV", "NASB", "NASB1995", "NET", "NIV", "NIVUK", "NKJV", "NLT", "NLV", "NMB", "NOG", "NRSV", "NRSVUE", "RSV", "WEB", "YLT", "RVA", "SCH2000", "HOF", "SG21"]
 
-def getLanguage(version):
-    if version == "RVA":
-        return "es"
-    elif version == "SCH2000" or version == "HOF":
-        return "de"
-    elif version == "SG21":
-        return "fr"
-    return "en"
-
-def isSupportedVersion(version):
-    return (version.toupper() in getSupportedVersions())
+    return {"AMP":      ["Amplified Bible",                              "en"],
+            "ASV":      ["American Standard Version",                    "en"],
+            "AKJV":     ["Authorized (King James) Version",              "en"],
+            "BRG":      ["BRG Bible",                                    "en"],
+            "CSB":      ["Christian Standard Bible",                     "en"],
+            "EHV":      ["Evangelical Heritage Version",                 "en"],
+            "ESV":      ["English Standard Version",                     "en"],
+            "ESVUK":    ["English Standard Version Anglicised",          "en"],
+            "GNV":      ["1599 Geneva Bible",                            "en"],
+            "GW":       ["GOD’S WORD Translation",                       "en"],
+            "ISV":      ["International Standard Version",               "en"],
+            "JUB":      ["Jubilee Bible 2000",                           "en"],
+            "KJV":      ["King James Version",                           "en"],
+            "KJ21":     ["21st Century King James Version",              "en"],
+            "LEB":      ["Lexham English Bible",                         "en"],
+            "LSB":      ["Legacy Standard Bible",                        "en"],
+            "MEV":      ["Modern English Version",                       "en"],
+            "NASB":     ["New American Standard Bible",                  "en"],
+            "NASB1995": ["New American Standard Bible 1995",             "en"],
+            "NET":      ["New English Translation",                      "en"],
+            "NIV":      ["New International Version",                    "en"],
+            "NIVUK":    ["New International Version - UK",               "en"],
+            "NKJV":     ["New King James Version",                       "en"],
+            "NLT":      ["New Living Translation",                       "en"],
+            "NLV":      ["New Life Version",                             "en"],
+            "NMB":      ["New Matthew Bible",                            "en"],
+            "NOG":      ["Names of God Bible",                           "en"],
+            "NRSV":     ["New Revised Standard Version",                 "en"],
+            "NRSVUE":   ["New Revised Standard Version Updated Edition", "en"],
+            "RSV":      ["Revised Standard Version",                     "en"],
+            "WEB":      ["World English Bible",                          "en"],
+            "YLT":      ["Young's Literal Translation",                  "en"],
+            "RVA":      ["Reina-Valera Antigua",                         "es"],
+            "SCH2000":  ["Schlachter 2000",                              "de"],
+            "HOF":      ["Hoffnung für Alle",                            "de"],
+            "SG21":     ["Segond 21",                                    "fr"]}
 
 def getData(version, verbose, cache):
 
@@ -37,6 +61,8 @@ def getData(version, verbose, cache):
                                 "content" : retrieveData(f"{book} {chapter}", version, verbose, cache)})
 
     return return_data
+
+###################################################################################################
 
 # This function is adapted from the meaningless package, version 1.3.0:
 # https://github.com/daniel-tran/meaningless
