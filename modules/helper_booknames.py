@@ -102,8 +102,8 @@ book_name2osis_map = {
     "psalm": "Ps",
     "proverbs": "Prov",
     "ecclesiastes": "Eccl",
-    "songofsolomon": "Song",
-    "songofsongs": "Song",
+    "song of solomon": "Song",
+    "song of songs": "Song",
     "isaiah": "Isa",
     "jeremiah": "Jer",
     "lamentations": "Lam",
@@ -165,21 +165,14 @@ def convert_bookname_to_osis(in_book):
         if ret != "":
             ret += "-"
 
-        ap = ap.replace("song of solomon", "songofsolomon")
-        ap = ap.replace("song of songs", "songofsongs")
-
-        curkey = ap.split(" ")
-        book = ""
-        loc = ""
-        if curkey[0] == "1" or curkey[0] == "2" or curkey[0] == "3":
-            book = f"{curkey[0]} {curkey[1]}"
-            loc = ("" if len(curkey) < 3 else curkey[2])
-        elif len(curkey) == 2:
-            book = curkey[0]
-            loc = curkey[1]
+        parts = ap.split(" ")
+        if ":" in parts[-1] or parts[-1].isdigit():
+            book = " ".join(parts[:-1])
+            loc = parts[-1]
         else:
-            book = curkey[0]
+            book = " ".join(parts)
             loc = ""
+
         if book not in book_name2osis_map:
             raise ValueError(f"Unknown book name: {in_book}")
         ret += f"{book_name2osis_map[book]} {loc}".strip()

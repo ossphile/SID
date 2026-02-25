@@ -10,6 +10,7 @@ import sys
 import argparse
 
 from modules.helper_booknames import *
+from modules.helper_general import *
 
 arg_verbose = False
 
@@ -50,11 +51,11 @@ def condense_reference_ranges(ref):
 def make_xrefs(text):
 
     # no cross references -> nothing to do
-    if "[[[" not in text:
+    if "|[|" not in text:
         return text
 
     # split along start of cross references
-    parts = text.split("[[[")
+    parts = text.split("|[|")
 
     # what came before is unchanged
     ret = parts[0]
@@ -66,7 +67,7 @@ def make_xrefs(text):
     for p in parts[1:]:
 
         # split along end of cross reference section
-        pp = p.split("]]]")
+        pp = p.split("|]|")
 
         # extract book name, chapter, and verse number from start of section
         book = pp[0].split("|")[0]
@@ -129,20 +130,33 @@ def make_footnotes(text):
 
     fn_id = 1
 
+    prevbook = "Genesis"
+    prevchapter = "1"
+
     # loop through all parts in steps of two (as the start and end have the same delimiter)
     for i in range(1,len(parts), 2):
 
         # we keep italic and bold markers
-        toadd = parts[i]
+        pp = parts[i]
+
+        book = pp.split("|")[0]
+        chapter = pp.split("|")[1]
+        footnote = pp.split("|")[2]
+
+        if book != prevbook or chapter != prevchapter:
+            prevbook = book
+            prevchapter = chapter
+            fn_id = 1
+
         toreplace = {"&lt;i&gt;" : "<i>",
                      "&lt;/i&gt;" : "</i>",
                      "&lt;b&gt;" : "<b>",
                      "&lt;/b&gt;" : "</b>"}
         for t in toreplace:
-            toadd = toadd.replace(t, toreplace[t])
+            footnote = footnote.replace(t, toreplace[t])
 
         # add footnote
-        ret += f'<note type="explanation" n="{fn_id}">{toadd}</note>'
+        ret += f'<note type="explanation" n="{fn_id}">{footnote}</note>'
         # and add everything after the end of the footnote unchanged
         ret += parts[i+1]
 
@@ -180,6 +194,9 @@ def create_osis(data, name, path):
     # loop over all data
     for entry in data:
 
+        if entry == "Info":
+            continue
+
         book = entry['book']
         shortbook = convert_bookname_to_osis(book)
         chapter = entry['chapter']
@@ -196,38 +213,98 @@ def create_osis(data, name, path):
         cdiv = EleTree.SubElement(bdiv, f"{{{name_space}}}chapter",
                                 {"osisID": f"{shortbook}.{chapter}"})
 
-        just_opened_section_to_start = True
-        csec = EleTree.SubElement(cdiv, f"{{{name_space}}}div",
-                                    {"type": "section"})
+        in_section = False
 
         for c in entry['content']:
 
-            # new section
-            if c[0] == "---":
+            first = (c[0] if type(c) == list else c).lstrip()
+            second = (c[1] if type(c) == list else "").lstrip()
 
-                # we open a section to start, this is to ensure we don't have an empty section at the beginning
-                if not just_opened_section_to_start:
-                    csec = EleTree.SubElement(cdiv, f"{{{name_space}}}div",
-                                    {"type": "section"})
+            if first == "":
+                continue
+
+            # new section
+            if first == "---":
+
+                csec = EleTree.SubElement(cdiv, f"{{{name_space}}}div",
+                                {"type": "section"})
+                in_section = True
 
                 continue
 
-            # now we're good
-            just_opened_section_to_start = False
+            if first.startswith("## "):
+
+                title = EleTree.SubElement(cdiv, f"{{{name_space}}}title",
+                                           {"type": "chapter"})
+                title.text = first.split("# ")[1].strip()
+
+                # first = "\n".join(first.split("\n")[1:])
+
+                csec = EleTree.SubElement(cdiv, f"{{{name_space}}}div",
+                                            {"type": "section"})
+                in_section = True
+
+                continue
 
             # create title
-            if c[0].startswith("#"):
+            elif first.startswith("#"):
+
+                if not in_section:
+                    csec = EleTree.SubElement(cdiv, f"{{{name_space}}}div",
+                                                {"type": "section"})
+                    in_section = True
+
                 title = EleTree.SubElement(csec, f"{{{name_space}}}title",
                                            {"type": "section"})
-                title.text = c[0].split("# ")[1].strip()
+                title.text = first.split("# ")[1].strip()
+
                 continue
 
+            if not in_section:
+                csec = EleTree.SubElement(cdiv, f"{{{name_space}}}div",
+                                            {"type": "section"})
+                in_section = True
+
+            # no verse data -> skip
+            if second == "":
+                continue
 
             # create verse sub element
             verse = EleTree.SubElement(csec, f"{{{name_space}}}verse",
-                                    {"osisID": f"{shortbook}.{chapter}.{c[0]}"})
-            # store verse text
-            verse.text = c[1]
+                                    {"osisID": f"{shortbook}.{chapter}.{first}"})
+
+            # poetry:
+            if "\n" in second:
+
+                parts = second.lstrip().split("\n")
+
+                skipFirst = True
+                verse.text = parts[0].strip()
+
+                poetry = EleTree.SubElement(verse, f"{{{name_space}}}lg")
+
+                for p in parts:
+
+                    if p.strip() == "":
+                        continue
+
+                    if skipFirst:
+                        skipFirst = False
+                        continue
+
+                    if p.startswith("    "):
+                        poetryline = EleTree.SubElement(poetry, f"{{{name_space}}}l",
+                                                        {"level": "3"})
+                    else:
+                        poetryline = EleTree.SubElement(poetry, f"{{{name_space}}}l",
+                                                        {"level": "2"})
+
+                    poetryline.text = p.strip()
+
+            else:
+
+                # store plain verse text
+                verse.text = second
 
     # create pretty xml from our string
     xml = minidom.parseString(EleTree.tostring(osis, encoding="utf-8")).toprettyxml(indent="  ")
@@ -265,7 +342,7 @@ def validate_xml(path):
 ##################################################################
 # build module and install it in the right folder structure
 
-def build_and_install(name, longname, osis_path, description, author):
+def build_and_install(name, longname, language, osis_path, description, author):
 
     # we create the file structure in a temp directory
     install_root = Path("./build_temp")
@@ -298,7 +375,7 @@ Encoding=UTF-8
 SourceType=OSIS
 CompressType=ZIP
 BlockType=BOOK
-Lang=en
+Lang={language}
 Version=1.0
 Description={description}
 About=Built with Python Sword Builder
@@ -349,11 +426,9 @@ def create_zip_module(name, root_dir):
 
 def generate_module(name, content,
                     longname,
-                    description="Custom Module",
-                    author="Auto Generated"):
-
-    # parse the input text
-    # data = parse_text(content)
+                    language,
+                    description,
+                    author):
 
     # create temporary build directory
     build_dir = Path("./build_temp")
@@ -374,7 +449,7 @@ def generate_module(name, content,
 
     if arg_verbose:
         print(" Building + Installing to temporary directory...")
-    build_and_install(name, longname, osis_path, description, author)
+    build_and_install(name, longname, language, osis_path, description, author)
 
     if arg_verbose:
         print(" Creating ZIP module file...")
@@ -388,7 +463,7 @@ def generate_module(name, content,
 
 if __name__ == "__main__":
 
-    backends = ["biblegateway.org"]
+    backends = ["biblegateway"]
 
     parser = argparse.ArgumentParser(
                     prog='SID',
@@ -398,7 +473,7 @@ if __name__ == "__main__":
     parser.add_argument('--backend', default="", help=f"Automatically choose the specified backend.\nPossible values are: {", ".join(backends)}")
     parser.add_argument('--bible-version', default="", help="Automatically choose the specified bible version.")
     parser.add_argument('--confirm-rights', default=False, action='store_true', help="Don't ask whether I have the required permissions.")
-    parser.add_argument('--ignore-cache', default=False, help="Don't use any cached files, re-download everything fresh.")
+    parser.add_argument('--ignore-cache', default=False, action='store_true', help="Don't use any cached files, re-download everything fresh.")
 
     args = parser.parse_args()
 
@@ -498,7 +573,7 @@ if __name__ == "__main__":
 
     mod = __import__(f'modules.backend_{arg_backend.replace(".","")}', fromlist=[''])
 
-    data = mod.getText(arg_version, verbose=arg_verbose, cache=(not arg_ignorecache))
+    data = mod.getData(arg_version, arg_verbose)
 
     print("")
     print(" Download completed! Generating module...")
@@ -507,7 +582,8 @@ if __name__ == "__main__":
     generate_module(name=f"{arg_version}{arg_backend.replace(".","")}",
                     content=data,
                     longname=arg_version,
-                    description=f"{arg_version} from {arg_backend}",
+                    language=mod.getLanguage(arg_version),
+                    description=f"{arg_version} ({arg_backend})",
                     author="SID")
 
     print(" Done!")
