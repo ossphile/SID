@@ -401,8 +401,11 @@ def create_zip_module(name, root_dir):
 
     import zipfile
 
+    zip_path = Path("output/")
+    zip_path.mkdir(exist_ok=True)
+
     # handler for the zip file
-    zf = zipfile.ZipFile(f"{name}.zip", "w")
+    zf = zipfile.ZipFile(zip_path / f"{name}.zip", "w")
 
     # we descend down into where the root of the zip file is supposed to be
     # without that we will have additional root folders we don't want
@@ -489,6 +492,15 @@ if __name__ == "__main__":
     arg_confirmrights = args.confirm_rights
     arg_cache = (not args.ignore_cache)
     arg_verbose = args.verbose
+
+    ########################################################################
+
+    print("")
+    print(" ******************")
+    print(" * WELCOME TO SID *")
+    print(" ******************")
+    print("")
+    print("")
 
     ########################################################################
 
@@ -593,8 +605,6 @@ if __name__ == "__main__":
 
     ########################################################################
 
-    print("")
-    print("")
     print(" Working with this configuration:")
     print("")
     print(f"  Backend: {arg_backend}")
@@ -606,7 +616,7 @@ if __name__ == "__main__":
 
     ########################################################################
 
-    print(" Launching download. This will take a few minutes...")
+    print(" Launching download. This might take a short while...")
     print("")
 
     data = mod.getData(arg_version, arg_verbose, arg_cache)
@@ -619,7 +629,7 @@ if __name__ == "__main__":
 
     generate_module(name=f"{arg_version}_{arg_backend.replace(".","")}",
                     content=data,
-                    longname=arg_version,
+                    longname=mod.getSupportedVersions()[arg_version][0],
                     language=mod.getSupportedVersions()[arg_version][1],
                     description=f"{arg_version} ({arg_backend})",
                     author="SID")
