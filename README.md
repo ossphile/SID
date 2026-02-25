@@ -74,4 +74,6 @@ The keys are the bible version identifiers that the user will use to select the 
 
 Both of these functions, and any other code needed by a backend, need to be stored in a file with filename `backend_[identifier].py`, where identifier is any string of letters that will allow the user to select this backend (for example: `backend_biblegateway.py`). In addition that idenfitier (*without* the `backend_` prefix *nor* the `.py` suffix), needs to be added to the `backends` list near the top of the `sword.py` file.
 
+There are a few helper functions that can be helpful that are provided in the two files `helper_general.py` and `helper_booknames.py`. They are all pretty much self-explanatory and are of course not obligatory to be used.
+
 And now you are ready to test your new backend with SID.
