@@ -8,6 +8,7 @@ from pathlib import Path
 import importlib
 import sys
 import argparse
+import math
 
 from modules.helper_booknames import *
 from modules.helper_general import *
@@ -18,7 +19,7 @@ arg_verbose = False
 ##################################################################
 # available backends
 
-backends = ["biblegateway"]
+backends = ["biblegateway", "helloao"]
 
 ##################################################################
 ##################################################################
@@ -282,10 +283,7 @@ def create_osis(data, name, path):
             # poetry:
             if "\n" in second:
 
-                parts = second.lstrip().split("\n")
-
-                skipFirst = True
-                verse.text = parts[0].strip()
+                parts = second.lstrip("\n").split("\n")
 
                 poetry = EleTree.SubElement(verse, f"{{{name_space}}}lg")
 
@@ -294,17 +292,10 @@ def create_osis(data, name, path):
                     if p.strip() == "":
                         continue
 
-                    if skipFirst:
-                        skipFirst = False
-                        continue
+                    level = math.ceil((len(p) - len(p.lstrip(' ')))/4)
 
-                    if p.startswith("    "):
-                        poetryline = EleTree.SubElement(poetry, f"{{{name_space}}}l",
-                                                        {"level": "3"})
-                    else:
-                        poetryline = EleTree.SubElement(poetry, f"{{{name_space}}}l",
-                                                        {"level": "2"})
-
+                    poetryline = EleTree.SubElement(poetry, f"{{{name_space}}}l",
+                                                    {"level": str(level)})
                     poetryline.text = p.strip()
 
             else:
@@ -539,15 +530,15 @@ if __name__ == "__main__":
             print(f" Using provided backend: {arg_backend}")
 
     mod = __import__(f'modules.backend_{arg_backend.replace(".","")}', fromlist=[''])
+    all_versions = mod.getSupportedVersions()
 
     ########################################################################
 
     if arg_listsupported:
 
-        print("")
         print(f" The supported bible versions of the backend '{arg_backend}' are:")
         print("")
-        [print(f"{ver:>12} | {mod.getSupportedVersions()[ver][0]} ({mod.getSupportedVersions()[ver][1]})") for ver in mod.getSupportedVersions()]
+        [print(f"{ver:>12} | {all_versions[ver][0]} ({all_versions[ver][1]})") for ver in all_versions]
         print("")
 
         exit()
@@ -565,11 +556,16 @@ if __name__ == "__main__":
         if arg_version == "":
             arg_version = "NIV"
 
+        if arg_version not in all_versions:
+            print(f" The requested version ({arg_version}) is not supported by the selected backends.")
+            print(f" Possible versions are: {", ".join(list(all_versions.keys()))}")
+            exit()
+
     else:
 
-        if arg_version not in mod.getSupportedVersions():
+        if arg_version not in all_versions:
             print(f" The requested version ({arg_version}) is not supported by the selected backends.")
-            print(f" Possible versions are: {", ".join(list(mod.getSupportedVersions().keys()))}")
+            print(f" Possible versions are: {", ".join(list(all_versions.keys()))}")
             exit()
 
         if arg_verbose:
@@ -629,8 +625,8 @@ if __name__ == "__main__":
 
     generate_module(name=f"{arg_version}_{arg_backend.replace(".","")}",
                     content=data,
-                    longname=mod.getSupportedVersions()[arg_version][0],
-                    language=mod.getSupportedVersions()[arg_version][1],
+                    longname=all_versions[arg_version][0],
+                    language=all_versions[arg_version][1],
                     description=f"{arg_version} ({arg_backend})",
                     author="SID")
 
