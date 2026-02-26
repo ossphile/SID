@@ -60,7 +60,7 @@ def getData(version, verbose, cache):
 
             if cache and cache_file.exists():
                 if verbose:
-                    print("Found cached file.")
+                    print("    -> found cached file.")
                 with open(cache_file, 'r') as f:
                     data = json.loads(f.read())
             else:

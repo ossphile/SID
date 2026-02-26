@@ -17,9 +17,9 @@ arg_verbose = False
 
 ##################################################################
 ##################################################################
-# available backends
+# available backends are automatically read from the modules subdirectory
 
-backends = ["biblegateway", "helloao"]
+backends = list(filter(str.strip, [fn[8:-3] if fn.startswith("backend_") else "" for fn in next(os.walk('./modules'), (None, None, []))[2]]))
 
 ##################################################################
 ##################################################################
