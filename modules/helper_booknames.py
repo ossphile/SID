@@ -170,7 +170,7 @@ book_name2usfm_map = {
     "2 chronicles" : "2CH",
     "ezra" : "EZR",
     "nehemiah" : "NEH",
-    "esther (Hebrew)" : "EST",
+    "esther" : "EST",
     "job" : "JOB",
     "psalms" : "PSA",
     "proverbs" : "PRO",
@@ -272,7 +272,7 @@ def convert_bookname_to_usfm(in_book):
             loc = ""
 
         if book not in book_name2usfm_map:
-            raise ValueError(f"Unknown book name: {in_book}")
+            raise ValueError(f"Unknown book name: {in_book} ({book})")
         ret += f"{book_name2usfm_map[book]} {loc}".strip()
 
     return ret

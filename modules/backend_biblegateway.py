@@ -4,6 +4,9 @@ from pathlib import Path
 from .helper_booknames import *
 from .helper_general import *
 
+def getDescription():
+    return "Supports a selection of bibles from biblegateway.org. The final bible includes section titles, cross-references, and footnotes whenever provided by biblegateway.org."
+
 def getSupportedVersions():
 
     return {"AMP":      ["Amplified Bible",                              "en"],
@@ -43,22 +46,30 @@ def getSupportedVersions():
             "HOF":      ["Hoffnung für Alle",                            "de"],
             "SG21":     ["Segond 21",                                    "fr"]}
 
-def getData(version, verbose, cache):
+def getData(version, verbose):
 
     return_data = []
 
+    printProgressBar(0, 1189, prefix='Book:', suffix='downloaded', length = 50)
+    progressCounter = 0
+
     for book in bible_books_chapters:
 
-        print(f"# BOOK: {book}")
+        if verbose:
+            print(f"# BOOK: {book}")
 
         for chapter in range(1, bible_books_chapters[book]+1):
 
+            progressCounter += 1
+
             if verbose:
                 print(f"  chapter: {chapter}")
+            else:
+                printProgressBar(progressCounter, 1189, prefix='  Bible:', suffix='downloaded', length = 50)
 
             return_data.append({"book" : book,
                                 "chapter" : chapter,
-                                "content" : retrieveData(f"{book} {chapter}", version, verbose, cache)})
+                                "content" : retrieveData(f"{book} {chapter}", version, verbose)})
 
     return return_data
 
@@ -66,7 +77,7 @@ def getData(version, verbose, cache):
 
 # This function is adapted from the meaningless package, version 1.3.0:
 # https://github.com/daniel-tran/meaningless
-def retrieveData(reference, version, verbose, cache):
+def retrieveData(reference, version, verbose):
     """
     Retrieves a specific passage directly from the Bible Gateway site.
     """
@@ -84,7 +95,7 @@ def retrieveData(reference, version, verbose, cache):
 
     htmltxt = ""
 
-    if cache and cache_file.exists():
+    if cache_file.exists():
         with open(cache_file, "r") as f:
             htmltxt = f.read()
         soup = BeautifulSoup(htmltxt, 'html.parser')
@@ -97,9 +108,8 @@ def retrieveData(reference, version, verbose, cache):
         source_site_params = urlencode({'version': version, 'search': reference, 'interface': 'print'})
         source_site = f'https://www.biblegateway.com/passage/?{source_site_params}'
         htmltxt = get_page(source_site).decode()
-        if cache:
-            with open(cache_file, "w") as f:
-                f.write(htmltxt)
+        with open(cache_file, "w") as f:
+            f.write(htmltxt)
         soup = BeautifulSoup(htmltxt, 'html.parser')
 
     # Don't collect contents from an invalid verse, since they do not exist.
