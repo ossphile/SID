@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 def getDescription():
-    return "Supports 1000+ free-to-use bibles, including many (but not all) well-known versions. Tends to include fewer footnotes, cross-references, or section titles compare to other backends."
+    return "Supports 1000+ free-to-use bibles, including many (but not all) well-known versions. Tends to include fewer footnotes, cross-references, or section titles compared to other backends."
 
 def getSupportedVersions():
 
@@ -46,7 +46,7 @@ def getData(version, verbose):
         if entry['shortName'] == version:
             ao_version = entry['id']
 
-    printProgressBar(0, 1189, prefix='Book:', suffix='downloaded', length = 50)
+    printProgressBar(0, 1189+1, prefix='  Progress:'  , length = 40)
     progressCounter = 0
 
     for book in bible_books_chapters:
@@ -63,7 +63,7 @@ def getData(version, verbose):
             if verbose:
                 print(f"  chapter: {chapter}")
             else:
-                printProgressBar(progressCounter, 1189, prefix='  Bible:', suffix='downloaded', length = 50)
+                printProgressBar(progressCounter, 1189+1, prefix='  Progress:', suffix=f' ({book} {chapter})           ', length = 40)
 
             cache_dir = Path(f"cache/aolab/{version}/")
             cache_dir.mkdir(exist_ok=True)
@@ -136,5 +136,8 @@ def getData(version, verbose):
             return_data.append({"book" : book,
                                 "chapter" : chapter,
                                 "content" : cur_data})
+
+
+    printProgressBar(1189+1, 1189+1, prefix='  Progress:', suffix=f'                           ', length = 40)
 
     return return_data;

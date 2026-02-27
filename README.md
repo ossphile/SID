@@ -59,13 +59,15 @@ SID also supports cross-references and footnotes to be contained in verses:
 
 All the code for this extraction needs to be wrapped in a function called `getData` that expects three parameters: `version`, (which bible version was requested), `verbose` (whether the user wants verbose feedback of what is going on), and `cache` (whether the backend is expected to dome some caching of downloaded files). 
 
-In addition to the `getData` function for extracting the bible text in the format described above, one additional function that is necessary is the function called `getSupportedVersions`. This function returns a dictionary as described by this sample data:
+In addition to the `getData` function for extracting the bible text in the format described above, two additional functions are necessary, one of them a function called `getSupportedVersions`. This function returns a dictionary as described by this sample data:
 ```
 data = {'NIV'     : ['New International Version', 'en'],
         'SCH2000' : ['Schlachter 2000'          , 'de']}
 ```
 The keys are the bible version identifiers that the user will use to select the desired version, and the values are lists containing exactly two elements: The first entry is the proper name of that bible version, and the second entry is the two-character identifier of the language.
 
-Both of these functions, and any other code needed by a backend, need to be stored in a file with filename `backend_[identifier].py`, where identifier is any string of letters that will allow the user to select this backend (for example: `backend_biblegateway.py` with the identifier `biblegateway`). There are a few helper functions that can be helpful that are provided in the two files `helper_general.py` and `helper_booknames.py`. They are all pretty much self-explanatory and are of course not obligatory to be used.
+The other necessary function is a function called `getDescription` which simply returns a string with a short description of the backend.
+
+All of these functions, and any other code needed by a backend, need to be stored in a file with filename `backend_[identifier].py`, where identifier is any string of letters that will allow the user to select this backend (for example: `backend_biblegateway.py` with the identifier `biblegateway`). There are a few helper functions that can be helpful that are provided in the two files `helper_general.py` and `helper_booknames.py`. They are all pretty much self-explanatory and are of course not obligatory to be used.
 
 And now you are ready to test your new backend with SID.
