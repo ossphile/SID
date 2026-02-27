@@ -100,14 +100,27 @@ if arg_version == "":
 
     if arg_version == "":
         print(" You need to enter a bible version.")
-        print(" You can get a list of all supported bible versions by running")
-        print(" the script with the --available-versions flag")
+        print("")
+        print(" Possible versions for this backend are:")
+        availver = textwrap.fill(", ".join(list(all_versions.keys())))
+        [print(f" {l}") for l in availver.split("\n")]
+        print("")
+        print(" You can get an extended list of all supported bible versions with their corresponding")
+        print(" name by running the script with the --available-versions flag")
         print("")
         exit()
 
     if arg_version not in all_versions:
+        print( " ERROR:")
         print(f" The requested version ({arg_version}) is not supported by the selected backends.")
-        print(f" Possible versions are: {", ".join(list(all_versions.keys()))}")
+        print("")
+        print(" Possible versions for this backend are:")
+        availver = textwrap.fill(", ".join(list(all_versions.keys())))
+        [print(f" {l}") for l in availver.split("\n")]
+        print("")
+        print(" You can get an extended list of all supported bible versions with their corresponding")
+        print(" name by running the script with the --available-versions flag")
+        print("")
         exit()
 
 else:
