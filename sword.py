@@ -13,15 +13,17 @@ parser.add_argument('--verbose', action='store_true', help="Enable verbose messa
 parser.add_argument('--backend', default="", help=f"Automatically choose the specified backend.\nPossible values are: {", ".join(backends)}")
 parser.add_argument('--bible-version', default="", help="Automatically choose the specified bible version.")
 parser.add_argument('--confirm-rights', default=False, action='store_true', help="Don't ask whether I have the required permissions.")
-parser.add_argument('--supported-versions', default=False, action='store_true', help="List all bible versions that are supported for the given backend.")
+parser.add_argument('--available-versions', default=False, action='store_true', help="List all bible versions that are supported for the given backend.")
+parser.add_argument('--preserve-xml', default=False, action='store_true', help="Preserve the XML in the final module file.")
 
 args = parser.parse_args()
 
 arg_backend = args.backend
-arg_listsupported = args.supported_versions
+arg_listsupported = args.available_versions
 arg_version = args.bible_version
 arg_confirmrights = args.confirm_rights
 arg_verbose = args.verbose
+arg_preserve_xml = args.preserve_xml
 
 ########################################################################
 
@@ -92,12 +94,16 @@ if arg_version == "":
     print("")
     print("What version do you want to create?")
     print("")
-    print(" Enter choice (default: NIV): ", end="")
+    print(" Enter choice: ", end="")
     arg_version = input()
     print("")
 
     if arg_version == "":
-        arg_version = "NIV"
+        print(" You need to enter a bible version.")
+        print(" You can get a list of all supported bible versions by running")
+        print(" the script with the --available-versions flag")
+        print("")
+        exit()
 
     if arg_version not in all_versions:
         print(f" The requested version ({arg_version}) is not supported by the selected backends.")
@@ -163,9 +169,11 @@ generate_module(name=f"{arg_version}_{arg_backend.replace(".","")}",
                 language=all_versions[arg_version][1],
                 description=f"{arg_version} ({arg_backend})",
                 author="SID",
+                preserve_xml=arg_preserve_xml,
                 verbose=arg_verbose)
 
 ########################################################################
 
 print("")
 print(" Done!")
+print("")

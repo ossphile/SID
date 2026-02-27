@@ -385,7 +385,7 @@ TextSource={author}
 ##################################################################
 ##################################################################
 # pack zip module file
-def create_zip_module(name, root_dir, verbose):
+def create_zip_module(name, root_dir, preserve_xml, verbose):
 
     import zipfile
 
@@ -411,11 +411,14 @@ def create_zip_module(name, root_dir, verbose):
         zf.write(dirname)
         for filename in files:
             zf.write(os.path.join(dirname, filename))
-    # add the xml file for safekeeping
-    for dirname, subdirs, files in os.walk("xml"):
-        zf.write(dirname)
-        for filename in files:
-            zf.write(os.path.join(dirname, filename))
+    if preserve_xml:
+        if verbose:
+            print("  Presering XML file.")
+        # add the xml file for safekeeping
+        for dirname, subdirs, files in os.walk("xml"):
+            zf.write(dirname)
+            for filename in files:
+                zf.write(os.path.join(dirname, filename))
 
     # done
     zf.close()
@@ -433,6 +436,7 @@ def generate_module(name, content,
                     language,
                     description,
                     author,
+                    preserve_xml,
                     verbose):
 
     # create temporary build directory
@@ -458,7 +462,7 @@ def generate_module(name, content,
 
     if verbose:
         print(" Creating ZIP module file...")
-    create_zip_module(name, build_dir, verbose)
+    create_zip_module(name, build_dir, preserve_xml, verbose)
 
     if verbose:
         print(" Cleaning up temporary files...")
