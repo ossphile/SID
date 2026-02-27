@@ -4,11 +4,11 @@ import json
 from pathlib import Path
 
 def getDescription():
-    return "Supports 1000+ free-to-use bibles, including many (but not all) well-known versions. Tends to include fewer footnotes, cross-references, or heading compare to other backends."
+    return "Supports 1000+ free-to-use bibles, including many (but not all) well-known versions. Tends to include fewer footnotes, cross-references, or section titles compare to other backends."
 
 def getSupportedVersions():
 
-    cache_dir = Path("cache/helloao/")
+    cache_dir = Path("cache/aolab/")
     cache_dir.mkdir(exist_ok=True)
     cache_file = cache_dir / "versions.json"
 
@@ -39,7 +39,7 @@ def getData(version, verbose):
 
     # get version ID
     ao_version = version
-    cache_file = "cache/helloao/versions.json"
+    cache_file = "cache/aolab/versions.json"
     with open(cache_file, 'r') as f:
         data = json.loads(f.read())
     for entry in data['translations']:
@@ -65,7 +65,7 @@ def getData(version, verbose):
             else:
                 printProgressBar(progressCounter, 1189, prefix='  Bible:', suffix='downloaded', length = 50)
 
-            cache_dir = Path(f"cache/helloao/{version}/")
+            cache_dir = Path(f"cache/aolab/{version}/")
             cache_dir.mkdir(exist_ok=True)
             cache_file = cache_dir / f"{book}.{chapter}.json"
 
