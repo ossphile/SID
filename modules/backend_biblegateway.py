@@ -50,7 +50,7 @@ def getData(version, verbose):
 
     return_data = []
 
-    printProgressBar(0, 1189, prefix='Book:', suffix='downloaded', length = 50)
+    printProgressBar(0, 1189+1, prefix='  Progress:', length = 40)
     progressCounter = 0
 
     for book in bible_books_chapters:
@@ -65,11 +65,13 @@ def getData(version, verbose):
             if verbose:
                 print(f"  chapter: {chapter}")
             else:
-                printProgressBar(progressCounter, 1189, prefix='  Bible:', suffix='downloaded', length = 50)
+                printProgressBar(progressCounter, 1189+1, prefix='  Progress:', suffix=f' ({book} {chapter})           ', length = 40)
 
             return_data.append({"book" : book,
                                 "chapter" : chapter,
                                 "content" : retrieveData(f"{book} {chapter}", version, verbose)})
+
+    printProgressBar(1189+1, 1189+1, prefix='  Progress:', suffix=f'                           ', length = 40)
 
     return return_data
 
@@ -130,7 +132,7 @@ def retrieveData(reference, version, verbose):
 
     # replace all cross-references with the respective references. This can be a comma separated list of
     # multiple references. The list starts with |[| and ends with |]|
-    [sup.replaceWith(f"|[|{reference.split(" ")[0]}|{reference.split(":")[-1]}|{soup.find("li", id=sup['data-cr'][1:]).a.text}|{soup.find("li", id=sup['data-cr'][1:]).find("a", {'class', "crossref-link"})['data-bibleref']}|]|") for sup in soup.find_all("sup", {'class', "crossreference"})]
+    [sup.replaceWith(f"|[|{" ".join(reference.split(" ")[:-1])}|{reference.split(":")[-1]}|{soup.find("li", id=sup['data-cr'][1:]).a.text}|{soup.find("li", id=sup['data-cr'][1:]).find("a", {'class', "crossref-link"})['data-bibleref']}|]|") for sup in soup.find_all("sup", {'class', "crossreference"})]
 
     # replace all footnotes
     [sup.replaceWith(f"|||{reference.split(" ")[0]}|{reference.split(":")[-1]}|{soup.find("li", id=sup['data-fn'][1:]).span.text}|||") for sup in soup.find_all("sup", {'class', 'footnote'})]
